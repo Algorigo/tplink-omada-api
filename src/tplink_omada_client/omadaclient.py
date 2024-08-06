@@ -68,7 +68,9 @@ class OmadaClient:
 
     async def get_controller_name(self) -> str:
         """Get the display name of the Omada controller."""
-        result = await self._api.request("get", self._api.format_url("maintenance/uiInterface"))
+        result = await self._api.request(
+            "get", self._api.format_url("maintenance/uiInterface")
+        )
 
         return OmadaInterfaceDetails(result).controller_name
 
@@ -119,8 +121,12 @@ class OmadaClient:
             cert_data = upload_file.read()
 
         with MultipartWriter("form-data") as mpwriter:
-            file_part = mpwriter.append(cert_data, CIMultiDict({"Content-Type": "application/x-pkcs12"}))
-            file_part.set_content_disposition("form-data", name="file", filename=base_name)
+            file_part = mpwriter.append(
+                cert_data, CIMultiDict({"Content-Type": "application/x-pkcs12"})
+            )
+            file_part.set_content_disposition(
+                "form-data", name="file", filename=base_name
+            )
 
             data_part = mpwriter.append_json({"cerName": base_name})
             data_part.set_content_disposition("form-data", name="data")

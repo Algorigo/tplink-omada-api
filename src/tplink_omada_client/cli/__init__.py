@@ -39,7 +39,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     if argv is None:
         argv = sys.argv[1:]
     parser = argparse.ArgumentParser()
-    parser.add_argument("-t", "--target", help="The target Omada controller", default="")
+    parser.add_argument(
+        "-t", "--target", help="The target Omada controller", default=""
+    )
 
     subparsers = parser.add_subparsers(
         title="Available commands",

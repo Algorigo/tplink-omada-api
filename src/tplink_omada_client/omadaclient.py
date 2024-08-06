@@ -66,6 +66,10 @@ class OmadaClient:
         """Get the controller version as an AwesomeVersion object."""
         return await self._api.get_controller_version()
 
+    async def logout(self):
+        """Log out of the controller."""
+        await self._api.logout()
+
     async def get_controller_name(self) -> str:
         """Get the display name of the Omada controller."""
         result = await self._api.request(

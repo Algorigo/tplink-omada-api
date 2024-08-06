@@ -110,6 +110,11 @@ class OmadaApiConnection:
 
         return self._controller_id
 
+    async def logout(self):
+        """Logout from the controller."""
+        response = await self._do_request("post", self.format_url("logout"))
+        self._csrf_token = None
+
     async def _check_login(self) -> bool:
         if self._csrf_token is None:
             return False
@@ -123,6 +128,8 @@ class OmadaApiConnection:
             logged_in = bool(response["login"])
             if logged_in:
                 self._last_logon = time.time()
+            else:
+                self._csrf_token = None
             return logged_in
         except:  # pylint: disable=bare-except  # noqa: E722
             return False

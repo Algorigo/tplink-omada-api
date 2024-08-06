@@ -62,6 +62,10 @@ class OmadaClient:
         """
         return await self._api.login()
 
+    async def logout(self):
+        """Log out of the controller."""
+        await self._api.logout()
+
     async def get_controller_name(self) -> str:
         """Get the display name of the Omada controller."""
         result = await self._api.request(

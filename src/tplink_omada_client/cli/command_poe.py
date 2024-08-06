@@ -17,7 +17,9 @@ async def _set_gateway_poe(
     site_client: OmadaSiteClient, device: OmadaDevice, port: int, change: bool, on: bool
 ) -> OmadaApiData:
     if change:
-        result = await site_client.set_gateway_port_settings(port, GatewayPortSettings(enable_poe=on), device)
+        result = await site_client.set_gateway_port_settings(
+            port, GatewayPortSettings(enable_poe=on), device
+        )
     else:
         result = await site_client.get_gateway_port(port, device)
     print(f"Gateway {device.name} Port {port} PoE is {result.poe_mode.name}")
@@ -28,7 +30,9 @@ async def _set_switch_poe(
     site_client: OmadaSiteClient, device: OmadaDevice, port: int, change: bool, on: bool
 ) -> OmadaApiData:
     if change:
-        result = await site_client.update_switch_port(device, port, overrides=SwitchPortOverrides(enable_poe=on))
+        result = await site_client.update_switch_port(
+            device, port, overrides=SwitchPortOverrides(enable_poe=on)
+        )
     else:
         result = await site_client.get_switch_port(device, port)
     print(f"Switch {device.name} Port {port} PoE now is {result.poe_mode.name}")
@@ -39,7 +43,9 @@ async def _set_access_point_poe(
     site_client: OmadaSiteClient, device: OmadaDevice, port: int, change: bool, on: bool
 ) -> OmadaApiData:
     if change:
-        result = await site_client.update_access_point_port(device, f"ETH{port}", AccessPointPortSettings(enable_poe=on))
+        result = await site_client.update_access_point_port(
+            device, f"ETH{port}", AccessPointPortSettings(enable_poe=on)
+        )
     else:
         result = await site_client.get_access_point_port(device, f"ETH{port}")
     print(f"Access point {device.name} Port {result.port_name} ", end="")
@@ -80,13 +86,25 @@ async def command_poe(args) -> int:
 
 def arg_parser(subparsers) -> None:
     """Configures arguments parser for 'poe' command"""
-    switch_parser: ArgumentParser = subparsers.add_parser("poe", help="Controls a device's PoE ports")
+    switch_parser: ArgumentParser = subparsers.add_parser(
+        "poe", help="Controls a device's PoE ports"
+    )
     switch_parser.set_defaults(func=command_poe)
 
-    switch_parser.add_argument("mac", help="The MAC address or name of the gateway, switch or access point with PoE ports")
-    switch_parser.add_argument("-p", "--port", help="The port number on the device to set the PoE state.", required=True)
+    switch_parser.add_argument(
+        "mac",
+        help="The MAC address or name of the gateway, switch or access point with PoE ports",
+    )
+    switch_parser.add_argument(
+        "-p",
+        "--port",
+        help="The port number on the device to set the PoE state.",
+        required=True,
+    )
 
     con_discon_grp = switch_parser.add_mutually_exclusive_group()
     con_discon_grp.add_argument("--on", help="Turn PoE On", action="store_true")
     con_discon_grp.add_argument("--off", help="Turn PoE Off", action="store_true")
-    switch_parser.add_argument("-d", "--dump", help="Output raw port information", action="store_true")
+    switch_parser.add_argument(
+        "-d", "--dump", help="Output raw port information", action="store_true"
+    )

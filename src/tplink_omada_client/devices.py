@@ -420,7 +420,9 @@ class OmadaAccessPoint(OmadaDetailedDevice):
     @property
     def lan_port_settings(self) -> list[OmadaAccesPointLanPortSettings]:
         """Settings for the LAN ports on the access point"""
-        return [OmadaAccesPointLanPortSettings(p) for p in self._data["lanPortSettings"]]
+        return [
+            OmadaAccesPointLanPortSettings(p) for p in self._data["lanPortSettings"]
+        ]
 
     @property
     def wired_uplink(self) -> OmadaUplink | None:
@@ -667,12 +669,19 @@ class OmadaGatewayPortStatus(OmadaApiData, OmadaPortStatus):
     @property
     def ipv6_wan_connected(self) -> bool:
         """True if the port is connected to the internet/WAN with IPv6"""
-        return dict[str, Any](self._data.get("wanPortIpv6Config", {})).get("internetState", 0) != 0
+        return (
+            dict[str, Any](self._data.get("wanPortIpv6Config", {})).get(
+                "internetState", 0
+            )
+            != 0
+        )
 
     @property
     def online_detection(self) -> bool:
         """True regular internet ping tests are working"""
-        return (self.wan_connected or self.ipv6_wan_connected) and self._data.get("onlineDetection", 0) != 0
+        return (self.wan_connected or self.ipv6_wan_connected) and self._data.get(
+            "onlineDetection", 0
+        ) != 0
 
     @property
     def ip(self) -> str | None:
@@ -687,7 +696,10 @@ class OmadaGatewayPortStatus(OmadaApiData, OmadaPortStatus):
     @property
     def wan_ipv6_enabled(self) -> bool:
         """The WAN IPv6 Address of the port (for WAN ports only)"""
-        return dict[str, Any](self._data.get("wanPortIpv6Config", {})).get("enable", 0) != 0
+        return (
+            dict[str, Any](self._data.get("wanPortIpv6Config", {})).get("enable", 0)
+            != 0
+        )
 
     @property
     def wan_ipv6_address(self) -> str | None:
@@ -800,9 +812,14 @@ class OmadaGateway(OmadaDetailedDevice):
         poe_data = {}
         if self.supports_poe:
             # Combined Gateway+PoE switch has this extra data
-            poe_data = {int(x["portId"]): bool(x["enable"]) for x in self._data["poeSettings"]}
+            poe_data = {
+                int(x["portId"]): bool(x["enable"]) for x in self._data["poeSettings"]
+            }
 
-        return [OmadaGatewayPortConfig(p, poe_data.get(p["port"])) for p in self._data["portConfigs"]]
+        return [
+            OmadaGatewayPortConfig(p, poe_data.get(p["port"]))
+            for p in self._data["portConfigs"]
+        ]
 
     @property
     def lldp_enabled(self) -> bool:

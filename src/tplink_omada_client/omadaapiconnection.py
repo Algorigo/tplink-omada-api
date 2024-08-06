@@ -55,7 +55,12 @@ class OmadaApiConnection:
     async def _get_session(self) -> ClientSession:
         if self._session is None:
             self._own_session = True
-            jar = None if re.fullmatch(r"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}", self._host) is None else CookieJar(unsafe=True)
+            jar = (
+                None
+                if re.fullmatch(r"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}", self._host)
+                is None
+                else CookieJar(unsafe=True)
+            )
             self._session = ClientSession(cookie_jar=jar)
         return self._session
 

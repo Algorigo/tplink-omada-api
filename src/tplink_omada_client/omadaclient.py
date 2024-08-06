@@ -16,6 +16,7 @@ from .exceptions import (
 from .devices import (
     OmadaInterfaceDetails,
 )
+from typing import Union
 
 
 class OmadaSite(NamedTuple):
@@ -38,7 +39,7 @@ class OmadaClient:
         url: str,
         username: str,
         password: str,
-        websession: ClientSession | None = None,
+        websession: Union[ClientSession, None] = None,
         verify_ssl=True,
     ):
         self._api = OmadaApiConnection(url, username, password, websession, verify_ssl)
@@ -76,7 +77,7 @@ class OmadaClient:
         sites = [OmadaSite(s["name"], s["key"]) for s in response["privilege"]["sites"]]
         return sites
 
-    async def get_site_client(self, site: str | OmadaSite) -> OmadaSiteClient:
+    async def get_site_client(self, site: Union[str, OmadaSite]) -> OmadaSiteClient:
         """Get a client that can query the specified Omada site."""
         if isinstance(site, OmadaSite):
             site_id = site.id

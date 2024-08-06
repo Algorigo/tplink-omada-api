@@ -68,15 +68,14 @@ async def command_poe(args) -> int:
         change = args["on"] or args["off"]
         on = bool(args["on"])
 
-        match device.type:
-            case "gateway":
-                handler = _set_gateway_poe
-            case "switch":
-                handler = _set_switch_poe
-            case "ap":
-                handler = _set_access_point_poe
-            case _:
-                raise ArgumentError(args["mac"], "Device type not supported")
+        if device.type == "gateway":
+            handler = _set_gateway_poe
+        elif device.type == "switch":
+            handler = _set_switch_poe
+        elif device.type == "ap":
+            handler = _set_access_point_poe
+        else:
+            raise ArgumentError(args["mac"], "Device type not supported")
 
         result = await handler(site_client, device, port, change, on)
         dump_raw_data(args, result)

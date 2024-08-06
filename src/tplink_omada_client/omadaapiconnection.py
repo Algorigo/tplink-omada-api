@@ -17,6 +17,7 @@ from .exceptions import (
     RequestFailed,
     UnsupportedControllerVersion,
 )
+from typing import Union
 
 
 _PAGE_SIZE: int = 100
@@ -28,7 +29,7 @@ class OmadaApiConnection:
     _own_session: bool
     _controller_id: str
     _controller_version: str
-    _csrf_token: str | None
+    _csrf_token: Union[str, None]
     _last_logon: float
 
     def __init__(
@@ -36,7 +37,7 @@ class OmadaApiConnection:
         url: str,
         username: str,
         password: str,
-        websession: ClientSession | None = None,
+        websession: Union[ClientSession, None] = None,
         verify_ssl=True,
     ):
         if not url.lower().startswith(("http://", "https://")):
@@ -134,7 +135,7 @@ class OmadaApiConnection:
 
         return (response["controllerVer"], response["omadacId"])
 
-    def format_url(self, end_point: str, site: str | None = None) -> str:
+    def format_url(self, end_point: str, site: Union[str, None] = None) -> str:
         """Get a REST url for the controller action"""
 
         if site:
@@ -142,7 +143,9 @@ class OmadaApiConnection:
 
         return urljoin(self._url, f"/{self._controller_id}/api/v2/{end_point}")
 
-    async def iterate_pages(self, url: str, params: dict[str, Any] | None = None) -> AsyncIterable[dict[str, Any]]:
+    async def iterate_pages(
+        self, url: str, params: dict[str, Any, None] = None
+    ) -> AsyncIterable[dict[str, Any]]:
         """Iterates all the entries of a paged endpoint"""
         request_params = {}
         if params is not None:
@@ -165,7 +168,14 @@ class OmadaApiConnection:
             for item in data:
                 yield item
 
-    async def request(self, method: str, url: str, params=None, json=None, data: Payload | None = None) -> Any:
+    async def request(
+        self,
+        method: str,
+        url: str,
+        params=None,
+        json=None,
+        data: Union[Payload, None] = None,
+    ) -> Any:
         """Perform a request specific to the controlller, with authentication"""
 
         if not await self._check_login():
@@ -173,7 +183,14 @@ class OmadaApiConnection:
 
         return await self._do_request(method, url, params=params, json=json, data=data)
 
-    async def _do_request(self, method: str, url: str, params=None, json=None, data: Payload | None = None) -> Any:
+    async def _do_request(
+        self,
+        method: str,
+        url: str,
+        params=None,
+        json=None,
+        data: Union[Payload, None] = None,
+    ) -> Any:
         """Perform a request on the controller, and unpack the response."""
 
         session = await self._get_session()

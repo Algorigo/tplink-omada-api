@@ -7,13 +7,14 @@ from .definitions import (
     RadioId,
     WifiMode,
 )
+from typing import Union
 
 
 class OmadaNetworkClient(OmadaApiData):
     """Base representation of Omada client"""
 
     @property
-    def connection_time(self) -> int | None:
+    def connection_time(self) -> Union[int, None]:
         """Client connection time in seconds."""
         if "uptime" in self._data:
             return self._data["uptime"]
@@ -48,7 +49,7 @@ class OmadaNetworkClient(OmadaApiData):
         return self._data["name"]
 
     @property
-    def is_wireless(self) -> bool | None:
+    def is_wireless(self) -> Union[bool, None]:
         """Indicates if client is a wireless client"""
         return self._data.get("wireless")
 
@@ -72,7 +73,7 @@ class OmadaConnectedClient(OmadaNetworkClient):
         return self._data["authStatus"]
 
     @property
-    def connect_dev_type(self) -> str | None:
+    def connect_dev_type(self) -> Union[str, None]:
         """Connected device type (ap, gateway, switch)"""
         return self._data.get("connectDevType")
 
@@ -92,12 +93,12 @@ class OmadaConnectedClient(OmadaNetworkClient):
         return self._data["downPacket"]
 
     @property
-    def host_name(self) -> str | None:
+    def host_name(self) -> Union[str, None]:
         """The client's hostname."""
         return self._data.get("hostName")
 
     @property
-    def ip(self) -> str | None:
+    def ip(self) -> Union[str, None]:
         """The client's IP address."""
         return self._data.get("ip")
 
@@ -117,7 +118,7 @@ class OmadaConnectedClient(OmadaNetworkClient):
         return self._data["upPacket"]
 
     @property
-    def vlan(self) -> int | None:
+    def vlan(self) -> Union[int, None]:
         """
         VLAN ID
 
@@ -182,7 +183,7 @@ class OmadaClientDetails(OmadaConnectedClient):
     """Details of a client connected to an Omada device."""
 
     @property
-    def device_category(self) -> str | None:
+    def device_category(self) -> Union[str, None]:
         """Device category."""
         return self._data.get("deviceCategory")
 
@@ -192,7 +193,7 @@ class OmadaClientDetails(OmadaConnectedClient):
         return IpSetting(self._data["ipSetting"])
 
     @property
-    def os_name(self) -> str | None:
+    def os_name(self) -> Union[str, None]:
         """Operating system name."""
         return self._data.get("osName")
 
@@ -202,7 +203,7 @@ class OmadaClientDetails(OmadaConnectedClient):
         return RateLimit(self._data["rateLimit"])
 
     @property
-    def vendor(self) -> str | None:
+    def vendor(self) -> Union[str, None]:
         """Vendor of the device."""
         return self._data.get("vendor")
 
@@ -216,12 +217,12 @@ class OmadaWiredClient(OmadaConnectedClient):
         return self._data["dot1xVlan"]
 
     @property
-    def gateway_mac(self) -> str | None:
+    def gateway_mac(self) -> Union[str, None]:
         """Mac address of gateway the client is connected to"""
         return self._data.get("switchMac")
 
     @property
-    def gateway_name(self) -> str | None:
+    def gateway_name(self) -> Union[str, None]:
         """Name of gateway the client is connected to"""
         return self._data.get("gatewayName")
 
@@ -236,12 +237,12 @@ class OmadaWiredClient(OmadaConnectedClient):
         return self._data["port"]
 
     @property
-    def switch_mac(self) -> str | None:
+    def switch_mac(self) -> Union[str, None]:
         """Mac address of switch the client is connected to"""
         return self._data.get("switchMac")
 
     @property
-    def switch_name(self) -> str | None:
+    def switch_name(self) -> Union[str, None]:
         """Name of switch the client is connected to"""
         return self._data.get("switchName")
 

@@ -38,6 +38,7 @@ from .exceptions import (
     InvalidDevice,
 )
 from .omadaapiconnection import OmadaApiConnection
+from typing import Union
 
 
 @dataclass
@@ -69,9 +70,9 @@ class AccessPointPortSettings:
     Specify the values you want to modify. The remaining values will be unaffected
     """
 
-    enable_poe: bool | None = None
-    vlan_enable: bool | None = None
-    vlan_id: int | None = None
+    enable_poe: Union[bool, None] = None
+    vlan_enable: Union[bool, None] = None
+    vlan_id: Union[int, None] = None
 
 
 @dataclass
@@ -82,7 +83,7 @@ class GatewayPortSettings:
     Specify the values you want to modify. The remaining values will be unaffected
     """
 
-    enable_poe: bool | None = None
+    enable_poe: Union[bool, None] = None
 
 
 @dataclass
@@ -91,8 +92,8 @@ class OmadaClientFixedAddress:
     Describes a fixed IP address reservation for a client
     """
 
-    network_id: str | None = None
-    ip_address: str | None = None
+    network_id: Union[str, None] = None
+    ip_address: Union[str, None] = None
 
 
 @dataclass
@@ -101,9 +102,9 @@ class OmadaClientSettings:
     Settings that can be applied to a client
     """
 
-    name: str | None = None
-    lock_to_aps: list[str] | None = None
-    fixed_address: OmadaClientFixedAddress | None = None
+    name: Union[str, None] = None
+    lock_to_aps: Union[list[str], None] = None
+    fixed_address: Union[OmadaClientFixedAddress, None] = None
 
 
 class OmadaSiteClient:
@@ -113,7 +114,7 @@ class OmadaSiteClient:
         self._api = api
         self._site_id = site_id
 
-    async def block_client(self, mac_or_client: str | OmadaNetworkClient) -> None:
+    async def block_client(self, mac_or_client: Union[str, OmadaNetworkClient]) -> None:
         """Block the specified client from the network."""
         if isinstance(mac_or_client, OmadaConnectedClient):
             mac = mac_or_client.mac
@@ -123,7 +124,9 @@ class OmadaSiteClient:
             "post", self._api.format_url(f"cmd/clients/{mac}/block", self._site_id)
         )
 
-    async def unblock_client(self, mac_or_client: str | OmadaNetworkClient) -> None:
+    async def unblock_client(
+        self, mac_or_client: Union[str, OmadaNetworkClient]
+    ) -> None:
         """Unblock the specified client from the network."""
         if isinstance(mac_or_client, OmadaConnectedClient):
             mac = mac_or_client.mac
@@ -133,7 +136,9 @@ class OmadaSiteClient:
             "post", self._api.format_url(f"cmd/clients/{mac}/unblock", self._site_id)
         )
 
-    async def get_client(self, mac_or_client: str | OmadaNetworkClient) -> OmadaClientDetails:
+    async def get_client(
+        self, mac_or_client: Union[str, OmadaNetworkClient]
+    ) -> OmadaClientDetails:
         """Get the details of a client"""
         if isinstance(mac_or_client, OmadaConnectedClient):
             mac = mac_or_client.mac
@@ -149,7 +154,11 @@ class OmadaSiteClient:
         else:
             return OmadaWiredClientDetails(result)
 
-    async def update_client(self, mac_or_client: str | OmadaNetworkClient, settings: OmadaClientSettings):
+    async def update_client(
+        self,
+        mac_or_client: Union[str, OmadaNetworkClient],
+        settings: OmadaClientSettings,
+    ):
         """Update configuration of a client"""
         if isinstance(mac_or_client, OmadaConnectedClient):
             mac = mac_or_client.mac
@@ -236,7 +245,9 @@ class OmadaSiteClient:
             if d.type == "ap"
         ]
 
-    async def get_access_point(self, mac_or_device: str | OmadaDevice) -> OmadaAccessPoint:
+    async def get_access_point(
+        self, mac_or_device: Union[str, OmadaDevice]
+    ) -> OmadaAccessPoint:
         """Get an access point by Mac address or Omada device."""
 
         if isinstance(mac_or_device, OmadaDevice):
@@ -252,7 +263,9 @@ class OmadaSiteClient:
 
         return OmadaAccessPoint(result)
 
-    async def get_access_point_port(self, mac_or_device: str | OmadaDevice, port_name: str) -> OmadaAccesPointLanPortSettings:
+    async def get_access_point_port(
+        self, mac_or_device: Union[str, OmadaDevice], port_name: str
+    ) -> OmadaAccesPointLanPortSettings:
         """Get the config of a single network port on an access point."""
         ap = await self.get_access_point(mac_or_device)
 
@@ -261,7 +274,7 @@ class OmadaSiteClient:
             raise InvalidDevice(f"Port {port_name} not found")
         return port
 
-    async def get_switch(self, mac_or_device: str | OmadaDevice) -> OmadaSwitch:
+    async def get_switch(self, mac_or_device: Union[str, OmadaDevice]) -> OmadaSwitch:
         """Get a switch by Mac address or Omada device."""
 
         if isinstance(mac_or_device, OmadaDevice):
@@ -277,7 +290,9 @@ class OmadaSiteClient:
 
         return OmadaSwitch(result)
 
-    async def get_switch_ports(self, mac_or_device: str | OmadaDevice) -> list[OmadaSwitchPortDetails]:
+    async def get_switch_ports(
+        self, mac_or_device: Union[str, OmadaDevice]
+    ) -> list[OmadaSwitchPortDetails]:
         """Get ports of a switch by Mac address or Omada device."""
 
         if isinstance(mac_or_device, OmadaDevice):
@@ -295,8 +310,8 @@ class OmadaSiteClient:
 
     async def get_switch_port(
         self,
-        mac_or_device: str | OmadaDevice,
-        index_or_port: int | OmadaSwitchPort,
+        mac_or_device: Union[str, OmadaDevice],
+        index_or_port: Union[int, OmadaSwitchPort],
     ) -> OmadaSwitchPortDetails:
         """Get a single port of a switch by Mac address or Omada device,
         and port number or port object of OmadaSwitch device."""
@@ -321,8 +336,8 @@ class OmadaSiteClient:
 
     async def get_switch_port_overrides(
         self,
-        mac_or_device: str | OmadaDevice,
-        index_or_port: int | OmadaSwitchPort,
+        mac_or_device: Union[str, OmadaDevice],
+        index_or_port: Union[int, OmadaSwitchPort],
     ) -> SwitchPortOverrides:
         """Return the current override settings for the port of a switch, or the current profile settings as default."""
 
@@ -361,7 +376,7 @@ class OmadaSiteClient:
 
     async def update_access_point_port(
         self,
-        mac_or_device: str | OmadaDevice,
+        mac_or_device: Union[str, OmadaDevice],
         port_name: str,
         setting: AccessPointPortSettings,
     ) -> OmadaAccesPointLanPortSettings:
@@ -406,11 +421,11 @@ class OmadaSiteClient:
 
     async def update_switch_port(
         self,
-        mac_or_device: str | OmadaDevice,
-        index_or_port: int | OmadaSwitchPort,
-        new_name: str | None = None,
-        profile_id: str | None = None,
-        overrides: SwitchPortOverrides | None = None,
+        mac_or_device: Union[str, OmadaDevice],
+        index_or_port: Union[int, OmadaSwitchPort],
+        new_name: Union[str, None] = None,
+        profile_id: Union[str, None] = None,
+        overrides: Union[SwitchPortOverrides, None] = None,
     ) -> OmadaSwitchPortDetails:
         """Applies an existing profile to a switch on the port"""
 
@@ -474,7 +489,9 @@ class OmadaSiteClient:
 
         return [OmadaPortProfile(p) for p in result["data"]]
 
-    async def get_firmware_details(self, mac_or_device: str | OmadaDevice) -> OmadaFirmwareUpdate:
+    async def get_firmware_details(
+        self, mac_or_device: Union[str, OmadaDevice]
+    ) -> OmadaFirmwareUpdate:
         """Get details of the device firware and available upgrades."""
 
         if isinstance(mac_or_device, OmadaDevice):
@@ -488,7 +505,9 @@ class OmadaSiteClient:
 
         return OmadaFirmwareUpdate(result)
 
-    async def start_firmware_upgrade(self, mac_or_device: str | OmadaDevice) -> bool:
+    async def start_firmware_upgrade(
+        self, mac_or_device: Union[str, OmadaDevice]
+    ) -> bool:
         """Begin an automatic firmware upgrade of the specified device"""
 
         if isinstance(mac_or_device, OmadaDevice):
@@ -514,7 +533,9 @@ class OmadaSiteClient:
             if d.type == "gateway"
         ]
 
-    async def _get_gateway_mac(self, mac_or_device: str | OmadaDevice | None) -> str:
+    async def _get_gateway_mac(
+        self, mac_or_device: Union[str, OmadaDevice, None]
+    ) -> str:
         if mac_or_device is None:
             mac_or_device = next(
                 (d for d in await self.get_devices() if d.type == "gateway"), None
@@ -528,7 +549,9 @@ class OmadaSiteClient:
             return mac_or_device.mac
         return mac_or_device
 
-    async def get_gateway(self, mac_or_device: str | OmadaDevice | None = None) -> OmadaGateway:
+    async def get_gateway(
+        self, mac_or_device: Union[str, OmadaDevice, None] = None
+    ) -> OmadaGateway:
         """Get the gatway (router) for the site by Mac address or Omada device. (There can be only one!)"""
 
         mac = await self._get_gateway_mac(mac_or_device)
@@ -538,7 +561,9 @@ class OmadaSiteClient:
 
         return OmadaGateway(result)
 
-    async def get_gateway_port(self, port_id: int, mac_or_deviec: str | OmadaDevice | None = None) -> OmadaGatewayPortConfig:
+    async def get_gateway_port(
+        self, port_id: int, mac_or_deviec: Union[str, OmadaDevice, None] = None
+    ) -> OmadaGatewayPortConfig:
         """Get the port config for a specified port on the gateway"""
         gw = await self.get_gateway(mac_or_deviec)
         port_config = next(p for p in gw.port_configs if p.port_number == port_id)
@@ -550,7 +575,7 @@ class OmadaSiteClient:
         self,
         port_id: int,
         connect: bool,
-        mac_or_device: str | OmadaDevice | None = None,
+        mac_or_device: Union[str, OmadaDevice, None] = None,
         ipv6: bool = False,
     ) -> OmadaGatewayPortStatus:
         """Connects or disconnects the specified WAN port of the gateway to the internet."""
@@ -571,7 +596,7 @@ class OmadaSiteClient:
         self,
         port_id: int,
         settings: GatewayPortSettings,
-        mac_or_device: str | OmadaDevice | None = None,
+        mac_or_device: Union[str, OmadaDevice, None] = None,
     ) -> OmadaGatewayPortConfig:
         """Sets the settings for the specified port of the gateway."""
         mac = await self._get_gateway_mac(mac_or_device)
@@ -630,7 +655,9 @@ class OmadaSiteClient:
         # so we just request a new update
         return await self.get_gateway_port(port_id, mac)
 
-    async def set_led_setting(self, mac_or_device: str | OmadaDevice, setting: LedSetting) -> bool:
+    async def set_led_setting(
+        self, mac_or_device: Union[str, OmadaDevice], setting: LedSetting
+    ) -> bool:
         """Sets the onboard LED setting for the device"""
         if isinstance(mac_or_device, OmadaDevice):
             device = mac_or_device

@@ -30,9 +30,10 @@ from . import (
     command_unblock_client,
     command_wan,
 )
+from typing import Union
 
 
-def main(argv: Sequence[str] | None = None) -> int:
+def main(argv: Union[Sequence[str], None] = None) -> int:
     """Entry point for Omada CLI"""
     if argv is None:
         argv = sys.argv[1:]

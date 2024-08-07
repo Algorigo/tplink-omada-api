@@ -7,6 +7,7 @@ from awesomeversion import AwesomeVersion
 
 from .clients import (
     OmadaClientDetails,
+    OmadaDisconnectedClient,
     OmadaConnectedClient,
     OmadaNetworkClient,
     OmadaWiredClient,
@@ -188,6 +189,8 @@ class OmadaSiteClient:
             "get", self._api.format_url(f"clients/{mac}", self._site_id)
         )
 
+        if not result.get("active"):
+            return OmadaDisconnectedClient(result)
         if result.get("wireless"):
             return OmadaWirelessClientDetails(result)
         else:

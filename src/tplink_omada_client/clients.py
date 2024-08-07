@@ -52,14 +52,18 @@ class OmadaNetworkClient(OmadaApiData):
         """Indicates if client is a wireless client"""
         return self._data.get("wireless")
 
-
-class OmadaConnectedClient(OmadaNetworkClient):
-    """Details of a client connected to an Omada device."""
-
     @property
     def is_active(self) -> bool:
         """Indicates if client is active"""
         return self._data["active"]
+
+
+class OmadaDisconnectedClient(OmadaNetworkClient):
+    """Details of a client that was not connected to an Omada device."""
+
+
+class OmadaConnectedClient(OmadaNetworkClient):
+    """Details of a client connected to an Omada device."""
 
     @property
     def activity(self) -> int:

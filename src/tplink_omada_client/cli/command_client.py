@@ -3,6 +3,9 @@
 from argparse import _SubParsersAction, ArgumentError
 import datetime
 from tplink_omada_client.clients import (
+    OmadaNetworkClient,
+    OmadaDisconnectedClient,
+    OmadaConnectedClient,
     OmadaWiredClientDetails,
     OmadaWirelessClientDetails,
 )
@@ -57,27 +60,27 @@ async def command_client(args) -> int:
     return 0
 
 
-def print_client(client):
+def print_client(client: OmadaNetworkClient):
     """Prints details of a client to the console."""
     print(f"Name: {client.name}")
     print(f"MAC: {client.mac}")
-    if client.ip:
-        print(f"IP: {client.ip}")
-    if client.host_name:
-        print(f"Hostname: {client.host_name}")
     print(f"Blocked: {client.is_blocked}")
-    if client.is_active:
+    if isinstance(client, OmadaConnectedClient):
+        print(f"IP: {client.ip}")
+        print(f"Hostname: {client.host_name}")
         uptime = str(datetime.timedelta(seconds=float(client.connection_time or 0)))
         print(f"Uptime: {uptime}")
-    if isinstance(client, OmadaWiredClientDetails):
-        if client.connect_dev_type == "switch":
-            print(f"Switch: {client.switch_name} ({client.switch_mac})")
-            print(f"Switch port: {client.port}")
-        elif client.connect_dev_type == "gateway":
-            print(f"Gateway: {client.gateway_name} ({client.gateway_mac})")
-    elif isinstance(client, OmadaWirelessClientDetails):
-        print(f"SSID: {client.ssid}")
-        print(f"Access Point: {client.ap_name} ({client.ap_mac})")
+        if isinstance(client, OmadaWiredClientDetails):
+            if client.connect_dev_type == "switch":
+                print(f"Switch: {client.switch_name} ({client.switch_mac})")
+                print(f"Switch port: {client.port}")
+            elif client.connect_dev_type == "gateway":
+                print(f"Gateway: {client.gateway_name} ({client.gateway_mac})")
+        elif isinstance(client, OmadaWirelessClientDetails):
+            print(f"SSID: {client.ssid}")
+            print(f"Access Point: {client.ap_name} ({client.ap_mac})")
+    elif isinstance(client, OmadaDisconnectedClient):
+        print("Status: Disconnected")
 
 
 def list_of_strings(arg):

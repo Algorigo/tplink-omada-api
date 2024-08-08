@@ -42,6 +42,7 @@ from .exceptions import (
     InvalidDevice,
 )
 from .omadaapiconnection import OmadaApiConnection
+from .setting.network import OmadaNetwork
 
 
 @dataclass
@@ -834,3 +835,10 @@ class OmadaSiteClient:
         )
 
         return True
+
+    async def get_networks(self) -> AsyncIterable[OmadaNetwork]:
+        """Get the clients connected to the site network."""
+        async for network in self._api.iterate_pages(
+            self._api.format_url("setting/lan/networks", self._site_id),
+        ):
+            yield OmadaNetwork(network)

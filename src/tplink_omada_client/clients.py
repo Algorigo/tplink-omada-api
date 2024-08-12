@@ -9,6 +9,78 @@ from .definitions import (
 )
 
 
+class IpSetting(OmadaApiData):
+    """IP settings of a client connected to an Omada device."""
+
+    @property
+    def used_fixed_addr(self) -> bool:
+        """True if a fixed IP address is reserved."""
+        return bool(self._data["useFixedAddr"])
+
+    @property
+    def net_id(self) -> str | None:
+        """Network ID."""
+        return self._data.get("netId")
+
+    @property
+    def ip(self) -> str | None:
+        """IP address."""
+        return self._data.get("ip")
+
+
+class ClientLockToApSetting(OmadaApiData):
+    """Client lock to AP settings of a client connected to an Omada device."""
+
+    @property
+    def enabled(self) -> bool:
+        """True if client lock to AP is enabled."""
+        return bool(self._data["enable"])
+
+    @property
+    def aps(self) -> list[dict[str, str]] | None:
+        """MAC address of the access point the client is locked to."""
+        return self._data.get("aps")
+
+
+class RateLimit(OmadaApiData):
+    """Rate limit settings of a client connected to an Omada device."""
+
+    @property
+    def enabled(self) -> bool:
+        """True if rate limiting is enabled."""
+        return bool(self._data["enable"])
+
+    @property
+    def down_enabled(self) -> bool:
+        """True if downstream rate limiting is enabled."""
+        return bool(self._data["downEnable"])
+
+    @property
+    def down_limit(self) -> int:
+        """Downstream rate limit."""
+        return int(self._data["downLimit"])
+
+    @property
+    def down_unit(self) -> int:
+        """Downstream rate limit unit (Enum)."""
+        return int(self._data["downUnit"])
+
+    @property
+    def up_enabled(self) -> bool:
+        """True if upstream rate limiting is enabled."""
+        return bool(self._data["upEnable"])
+
+    @property
+    def up_limit(self) -> int:
+        """Upstream rate limit."""
+        return int(self._data["upLimit"])
+
+    @property
+    def up_unit(self) -> int:
+        """Upstream rate limit unit (Enum)."""
+        return int(self._data["upUnit"])
+
+
 class OmadaNetworkClient(OmadaApiData):
     """Base representation of Omada client"""
 
@@ -56,6 +128,21 @@ class OmadaNetworkClient(OmadaApiData):
     def is_active(self) -> bool:
         """Indicates if client is active"""
         return self._data["active"]
+
+    @property
+    def ip_setting(self) -> IpSetting:
+        """IP Reservation settings of client."""
+        return IpSetting(self._data["ipSetting"])
+
+    @property
+    def cleint_lock_to_ap_setting(self) -> ClientLockToApSetting:
+        """Client lock to AP settings of client."""
+        return ClientLockToApSetting(self._data["clientLockToApSetting"])
+
+    @property
+    def rate_limit(self) -> RateLimit:
+        """Rate limit settings of client."""
+        return RateLimit(self._data["rateLimit"])
 
 
 class OmadaDisconnectedClient(OmadaNetworkClient):
@@ -132,54 +219,6 @@ class OmadaConnectedClient(OmadaNetworkClient):
         Not provided by: EAP660
         """
         return self._data.get("vid")
-
-
-class IpSetting(OmadaApiData):
-    """IP settings of a client connected to an Omada device."""
-
-    @property
-    def used_fixed_addr(self) -> bool:
-        """True if a fixed IP address is reserved."""
-        return bool(self._data["useFixedAddr"])
-
-
-class RateLimit(OmadaApiData):
-    """Rate limit settings of a client connected to an Omada device."""
-
-    @property
-    def enabled(self) -> bool:
-        """True if rate limiting is enabled."""
-        return bool(self._data["enable"])
-
-    @property
-    def down_enabled(self) -> bool:
-        """True if downstream rate limiting is enabled."""
-        return bool(self._data["downEnable"])
-
-    @property
-    def down_limit(self) -> int:
-        """Downstream rate limit."""
-        return int(self._data["downLimit"])
-
-    @property
-    def down_unit(self) -> int:
-        """Downstream rate limit unit (Enum)."""
-        return int(self._data["downUnit"])
-
-    @property
-    def up_enabled(self) -> bool:
-        """True if upstream rate limiting is enabled."""
-        return bool(self._data["upEnable"])
-
-    @property
-    def up_limit(self) -> int:
-        """Upstream rate limit."""
-        return int(self._data["upLimit"])
-
-    @property
-    def up_unit(self) -> int:
-        """Upstream rate limit unit (Enum)."""
-        return int(self._data["upUnit"])
 
 
 class OmadaClientDetails(OmadaConnectedClient):

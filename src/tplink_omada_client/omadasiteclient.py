@@ -38,11 +38,14 @@ from .devices import (
     OmadaSwitchPortDetails,
     OmadaAccesPointLanPortSettings,
 )
+from .setting.wan_lan_port import WanLanPort, WanPort
 from .exceptions import (
     InvalidDevice,
 )
 from .omadaapiconnection import OmadaApiConnection
 from .setting.network import OmadaNetwork
+from .setting.ip_mac_binding import InterfaceType, IpMacBinding
+import time
 
 
 @dataclass
@@ -842,3 +845,57 @@ class OmadaSiteClient:
             self._api.format_url("setting/lan/networks", self._site_id),
         ):
             yield OmadaNetwork(network)
+
+    async def get_wan_lan_ports(self) -> list[WanLanPort]:
+        """Get the WAN/LAN ports of the gateway."""
+        result = await self._api.request(
+            "get",
+            self._api.format_url("setting/wanlanstatus", self._site_id),
+            params={"_": str(int(time.time() * 1000))},
+        )
+
+        return [WanLanPort(k, v) for k, v in result.get("portName").items()] + [
+            WanPort(d) for d in result.get("wanList")
+        ]
+
+    async def create_ip_mac_binding(
+        self,
+        ip: str,
+        mac: str,
+        interface_id: str,
+        interface_type: InterfaceType = InterfaceType.WAN,
+        description: str = "",
+        export_to_dhcp_reservation: bool = True,
+        status: bool = True,
+    ) -> None:
+        """Create a port forwarding rule on the gateway."""
+        result = await self._api.request(
+            "post",
+            self._api.format_url("setting/firewall/imbs", self._site_id),
+            json={
+                "ip": ip,
+                "mac": mac,
+                "interfaceId": interface_id,
+                "interfaceType": interface_type,
+                "description": description,
+                "exportToDhcpReservation": export_to_dhcp_reservation,
+                "status": status,
+            },
+        )
+
+    async def get_ip_mac_bindings(self) -> AsyncIterable[IpMacBinding]:
+        """Get the IP/MAC bindings of the gateway."""
+        async for ip_binding in self._api.iterate_pages(
+            self._api.format_url("setting/firewall/imbs", self._site_id),
+        ):
+            yield IpMacBinding(ip_binding)
+
+    async def delete_ip_mac_binding(
+        self,
+        binding_id: str,
+    ):
+        """Delete an IP/MAC binding."""
+        await self._api.request(
+            "delete",
+            self._api.format_url(f"setting/firewall/imbs/{binding_id}", self._site_id),
+        )

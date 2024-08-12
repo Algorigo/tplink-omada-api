@@ -111,6 +111,12 @@ class OmadaClientSettings:
     lock_to_aps: Union[list[str], None] = None
     fixed_address: Union[OmadaClientFixedAddress, None] = None
 
+    def lock_to_aps_disabled() -> list[str]:
+        return []
+
+    def fixed_address_disabled() -> OmadaClientFixedAddress:
+        return OmadaClientFixedAddress()
+
 
 class OmadaSiteClient:
     """Client for querying an Omada site's devices."""

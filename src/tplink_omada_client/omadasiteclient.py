@@ -1,6 +1,7 @@
 """Client for Omada Site requests."""
 
-from typing import AsyncIterable
+from typing import AsyncIterable, List
+import time
 from dataclasses import dataclass
 
 from awesomeversion import AwesomeVersion
@@ -45,7 +46,7 @@ from .exceptions import (
 from .omadaapiconnection import OmadaApiConnection
 from .setting.network import OmadaNetwork
 from .setting.ip_mac_binding import InterfaceType, IpMacBinding
-import time
+from .setting.group import create_group_from_map, Group
 
 
 @dataclass
@@ -904,4 +905,49 @@ class OmadaSiteClient:
         await self._api.request(
             "delete",
             self._api.format_url(f"setting/firewall/imbs/{binding_id}", self._site_id),
+        )
+
+    async def get_groups(
+        self,
+    ) -> List[Group]:
+        result = await self._api.request(
+            "get",
+            self._api.format_url(
+                f"sites/{self._site_id}/setting/profiles/groups?_t={int(time.time()*1000)}"
+            ),
+        )
+        return [create_group_from_map(group) for group in result.get("data")]
+
+    async def create_new_group(
+        self,
+        group: Group,
+    ) -> Group:
+        map = group.to_map()
+        if map.get("groupId"):
+            raise ValueError("Group already has an ID")
+
+        map.pop("groupId", None)
+        map.pop("siteId", None)
+
+        result = await self._api.request(
+            "post",
+            self._api.format_url(
+                f"sites/{self._site_id}/setting/profiles/groups",
+            ),
+            json=map,
+        )
+        group.site_id = self._site_id
+        group.group_id = result
+
+        return group
+
+    async def delete_group(
+        self,
+        group: Group,
+    ) -> None:
+        await self._api.request(
+            "delete",
+            self._api.format_url(
+                f"sites/{self._site_id}/setting/profiles/groups/{group.type.value}/{group.group_id}",
+            ),
         )

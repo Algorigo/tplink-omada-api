@@ -100,11 +100,6 @@ class OmadaNetworkClient(OmadaApiData):
         return self._data.get("blocked", self._data.get("block", False))
 
     @property
-    def is_guest(self) -> bool:
-        """Indicates if client is a 'guest'."""
-        return self._data["guest"]
-
-    @property
     def last_seen(self) -> float:
         """Timestamp in second from Unix Epoch when client was last connected."""
         return self._data["lastSeen"] / 1000
@@ -151,6 +146,11 @@ class OmadaDisconnectedClient(OmadaNetworkClient):
 
 class OmadaConnectedClient(OmadaNetworkClient):
     """Details of a client connected to an Omada device."""
+
+    @property
+    def is_guest(self) -> bool:
+        """Indicates if client is a 'guest'."""
+        return self._data["guest"]
 
     @property
     def activity(self) -> int:

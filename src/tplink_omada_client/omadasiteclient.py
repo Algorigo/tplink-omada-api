@@ -49,6 +49,7 @@ from .setting.ip_mac_binding import InterfaceType, IpMacBinding
 from .setting.group import create_group_from_map, Group
 from .setting.rule import Rule, RuleType
 from .setting.ssid import Ssids
+from .setting.acl import Acl, AclType
 
 
 @dataclass
@@ -1016,5 +1017,54 @@ class OmadaSiteClient:
             "delete",
             self._api.format_url(
                 f"sites/{self._site_id}/setting/firewall/urlfilterings/{rule.id}",
+            ),
+        )
+
+    async def get_acls(
+        self,
+        type: AclType,
+        page: int = 1,
+        page_size: int = 100,
+    ) -> List[Acl]:
+        result = await self._api.request(
+            "get",
+            self._api.format_url(
+                f"sites/{self._site_id}/setting/firewall/acls?currentPage={page}&currentPageSize={page_size}&type={type.value}&_t={int(time.time()*1000)}"
+            ),
+        )
+
+        return [Acl(acl) for acl in result.get("data")]
+
+    async def create_new_acl(
+        self,
+        acl: Acl,
+    ) -> Acl:
+        if acl.id is not None:
+            raise ValueError("ACL already has an ID")
+
+        map = acl.to_map()
+        map.pop("index", None)
+        map.pop("siteId", None)
+
+        result = await self._api.request(
+            "post",
+            self._api.format_url(
+                f"sites/{self._site_id}/setting/firewall/acls",
+            ),
+            json=map,
+        )
+        acl.site_id = self._site_id
+        acl.id = result
+
+        return acl
+
+    async def delete_acl(
+        self,
+        acl: Acl,
+    ) -> None:
+        await self._api.request(
+            "delete",
+            self._api.format_url(
+                f"sites/{self._site_id}/setting/firewall/acls/{acl.id}",
             ),
         )

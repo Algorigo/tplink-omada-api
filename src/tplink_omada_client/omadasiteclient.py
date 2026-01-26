@@ -922,12 +922,12 @@ class OmadaSiteClient:
         self,
         group: Group,
     ) -> Group:
-        map = group.to_map()
-        if map.get("groupId"):
+        if group.group_id is not None:
             raise ValueError("Group already has an ID")
 
-        map.pop("groupId", None)
+        map = group.to_map()
         map.pop("siteId", None)
+        map.pop("builtIn", None)
 
         result = await self._api.request(
             "post",

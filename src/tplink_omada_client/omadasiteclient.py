@@ -47,6 +47,8 @@ from .omadaapiconnection import OmadaApiConnection
 from .setting.network import OmadaNetwork
 from .setting.ip_mac_binding import InterfaceType, IpMacBinding
 from .setting.group import create_group_from_map, Group
+from .setting.rule import Rule, RuleType
+from .setting.ssid import Ssids
 
 
 @dataclass
@@ -949,5 +951,68 @@ class OmadaSiteClient:
             "delete",
             self._api.format_url(
                 f"sites/{self._site_id}/setting/profiles/groups/{group.type.value}/{group.group_id}",
+            ),
+        )
+
+    async def get_ssids_list(
+        self,
+    ) -> List[Ssids]:
+        result = await self._api.request(
+            "get",
+            self._api.format_url(
+                f"sites/{self._site_id}/setting/ssids?type=1&_t={int(time.time()*1000)}"
+            ),
+        )
+        print("SSIDs result:", result)
+        return [Ssids(ssids) for ssids in result["ssids"]]
+
+    async def get_rules(
+        self,
+        type: RuleType,
+        page: int = 1,
+        page_size: int = 100,
+    ) -> List[Rule]:
+        result = await self._api.request(
+            "get",
+            self._api.format_url(
+                f"sites/{self._site_id}/setting/firewall/urlfilterings?currentPage={page}&currentPageSize={page_size}&type={type.value}&_t={int(time.time()*1000)}"
+            ),
+        )
+
+        return [Rule(rule) for rule in result.get("data")]
+
+    async def create_new_rule(
+        self,
+        rule: Rule,
+    ) -> Rule:
+        if rule.id is not None:
+            raise ValueError("Rule already has an ID")
+
+        map = rule.to_map()
+        map.pop("index", None)
+        map.pop("siteId", None)
+        map.pop("entryId", None)
+        map.pop("resource", None)
+
+        result = await self._api.request(
+            "post",
+            self._api.format_url(
+                f"sites/{self._site_id}/setting/firewall/urlfilterings",
+            ),
+            json=map,
+        )
+        rule.site_id = self._site_id
+        rule.id = result
+
+        return rule
+
+    async def delete_rule(
+        self,
+        rule: Rule,
+    ) -> None:
+        await self._api.request(
+            "delete",
+            self._api.format_url(
+                f"sites/{self._site_id}/setting/firewall/urlfilterings/{rule.id}",
             ),
         )

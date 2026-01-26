@@ -956,11 +956,13 @@ class OmadaSiteClient:
 
     async def get_ssids_list(
         self,
+        page: int = 1,
+        page_size: int = 100,
     ) -> List[Ssids]:
         result = await self._api.request(
             "get",
             self._api.format_url(
-                f"sites/{self._site_id}/setting/ssids?type=1&_t={int(time.time()*1000)}"
+                f"sites/{self._site_id}/setting/ssids?type=1&currentPage={page}&currentPageSize={page_size}&cu_t={int(time.time()*1000)}"
             ),
         )
         print("SSIDs result:", result)

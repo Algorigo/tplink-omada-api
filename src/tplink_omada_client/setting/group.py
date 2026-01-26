@@ -36,6 +36,9 @@ class IpListItem:
     def to_map(self) -> Dict[str, Any]:
         return {"ip": self.ip, "mask": str(self.mask), "description": self.description}
 
+    def __repr__(self):
+        return f"IpListItem(ip={self.ip}, mask={self.mask})"
+
 
 class IpV6ListItem:
     @staticmethod
@@ -62,6 +65,9 @@ class IpV6ListItem:
             "description": self.description,
         }
 
+    def __repr__(self):
+        return f"IpV6ListItem(ipv6={self.ipv6}, prefix={self.prefix})"
+
 
 class PortType(Enum):
     ip_port_range = 0
@@ -74,7 +80,7 @@ class PortRangeItem:
         self.start_port: int = int(parts[0])
         self.end_port: int = int(parts[1]) if len(parts) > 1 else self.start_port
 
-    def __str__(self):
+    def __repr__(self):
         return (
             f"{self.start_port}-{self.end_port}"
             if self.start_port != self.end_port
@@ -97,6 +103,9 @@ class PortMaskItem:
 
     def to_map(self) -> Dict[str, Any]:
         return {"port": self.port, "mask": hex(self.mask)}
+
+    def __repr__(self):
+        return f"PortMaskItem(port={self.port}, mask={hex(self.mask)})"
 
 
 class Group:
@@ -123,7 +132,7 @@ class Group:
         }
 
     def __repr__(self) -> str:
-        return self.name
+        return f"group_id={self.group_id}, name={self.name}"
 
     def __str__(self):
         return self.__repr__()
@@ -153,7 +162,7 @@ class IpGroup(Group):
         return isinstance(value, IpGroup) and self.to_map() == value.to_map()
 
     def __repr__(self):
-        return f"IpGroup(name={self.name}, ip_list={self.ip_list})"
+        return f"IpGroup({super().__repr__()}, ip_list={self.ip_list})"
 
     def __str__(self):
         return self.__repr__()
@@ -188,7 +197,7 @@ class IpV6Group(Group):
         return isinstance(value, IpV6Group) and self.to_map() == value.to_map()
 
     def __repr__(self):
-        return f"IpV6Group(name={self.name}, ipv6_list={self.ipv6_list})"
+        return f"IpV6Group({super().__repr__()}, ipv6_list={self.ipv6_list})"
 
     def __str__(self):
         return self.__repr__()
@@ -244,7 +253,7 @@ class IpPortGroup(Group):
         return isinstance(value, IpPortGroup) and self.to_map() == value.to_map()
 
     def __repr__(self):
-        return f"IpPortGroup(name={self.name}, ip_list={self.ip_list}, port_type={self.port_type}, port_list={self.port_list}, port_mask_list={self.port_mask_list})"
+        return f"IpPortGroup({super().__repr__()}, ip_list={self.ip_list}, port_type={self.port_type}, port_list={self.port_list}, port_mask_list={self.port_mask_list})"
 
     def __str__(self):
         return self.__repr__()
@@ -300,7 +309,7 @@ class IpV6PortGroup(Group):
         return isinstance(value, IpV6PortGroup) and self.to_map() == value.to_map()
 
     def __repr__(self):
-        return f"IpV6PortGroup(name={self.name}, ipv6_list={self.ipv6_list}, port_type={self.port_type}, port_list={self.port_list}, port_mask_list={self.port_mask_list})"
+        return f"IpV6PortGroup({super().__repr__()}, ipv6_list={self.ipv6_list}, port_type={self.port_type}, port_list={self.port_list}, port_mask_list={self.port_mask_list})"
 
     def __str__(self):
         return self.__repr__()
@@ -327,7 +336,7 @@ class MacGroup(Group):
         return isinstance(value, MacGroup) and self.to_map() == value.to_map()
 
     def __repr__(self):
-        return f"MacGroup(name={self.name}, mac_list={self.mac_list})"
+        return f"MacGroup({super().__repr__()}, mac_list={self.mac_list})"
 
     def __str__(self):
         return self.__repr__()
@@ -354,7 +363,9 @@ class LocationGroup(Group):
         return isinstance(value, LocationGroup) and self.to_map() == value.to_map()
 
     def __repr__(self):
-        return f"LocationGroup(name={self.name}, location_list={self.location_list})"
+        return (
+            f"LocationGroup({super().__repr__()}, location_list={self.location_list})"
+        )
 
     def __str__(self):
         return self.__repr__()
@@ -388,7 +399,7 @@ class DomainGroup(Group):
         return isinstance(value, DomainGroup) and self.to_map() == value.to_map()
 
     def __repr__(self):
-        return f"DomainGroup(name={self.name}, domain_name={self.domain_name}, domain_name_port={self.domain_name_port})"
+        return f"DomainGroup({super().__repr__()}, domain_name={self.domain_name}, domain_name_port={self.domain_name_port})"
 
     def __str__(self):
         return self.__repr__()

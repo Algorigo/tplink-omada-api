@@ -1,5 +1,6 @@
 from typing import Dict, Any, List, Optional
 from enum import Enum
+from .policy import Policy
 
 
 class RuleType(Enum):
@@ -7,12 +8,7 @@ class RuleType(Enum):
     eap = "ap"
 
 
-class Policy(Enum):
-    deny = 0
-    allow = 1
-
-
-class SourceType(Enum):
+class RuleSourceType(Enum):
     network = 0
     ip_group = 1
     ssid = 2
@@ -25,7 +21,7 @@ class Rule:
         name: str,
         status: bool,
         policy: Policy,
-        source_type: SourceType,
+        source_type: RuleSourceType,
         source_ids: List[str],
         urls: List[str],
     ) -> "Rule":
@@ -49,7 +45,7 @@ class Rule:
         self.name: str = map["name"]
         self.status: bool = map["status"]
         self.policy: Policy = Policy(map["policy"])
-        self.source_type: SourceType = SourceType(map["sourceType"])
+        self.source_type: RuleSourceType = RuleSourceType(map["sourceType"])
         self.source_ids: List[str] = map["sourceIds"]
         self.mode: int = map.get("mode", 0)
         self.urls: List[str] = map["urls"]

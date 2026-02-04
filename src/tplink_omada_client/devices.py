@@ -66,7 +66,9 @@ class OmadaDevice(OmadaApiData):
     @property
     def status_category(self) -> DeviceStatusCategory:
         """The high-level status of the device."""
-        return DeviceStatusCategory(self._data.get("statusCategory", DeviceStatusCategory.UNKNOWN))
+        return DeviceStatusCategory(
+            self._data.get("statusCategory", DeviceStatusCategory.UNKNOWN)
+        )
 
     @property
     def ip_address(self) -> str:
@@ -434,7 +436,10 @@ class OmadaAccessPoint(OmadaDetailedDevice):
     @property
     def lan_port_settings(self) -> list[OmadaAccesPointLanPortSettings]:
         """Settings for the LAN ports on the access point"""
-        return [OmadaAccesPointLanPortSettings(p) for p in self._data.get("lanPortSettings", [])]
+        return [
+            OmadaAccesPointLanPortSettings(p)
+            for p in self._data.get("lanPortSettings", [])
+        ]
 
     @property
     def wired_uplink(self) -> OmadaUplink | None:
@@ -481,13 +486,19 @@ class OmadaSwitchPortDetails(OmadaSwitchPort):
     @property
     def supports_poe(self) -> bool:
         """True if the port supports PoE."""
-        return self._data.get("supportPoe", True)  # default to true, some older versions don't report this
+        return self._data.get(
+            "supportPoe", True
+        )  # default to true, some older versions don't report this
 
     @property
     def poe_mode(self) -> PoEMode:
         """PoE config for this port."""
         # For reasons, Omada may claim Enabled on non-poe ports - probably due to port profiles
-        return PoEMode(self._data.get("poe", PoEMode.NONE)) if self.supports_poe else PoEMode.NONE
+        return (
+            PoEMode(self._data.get("poe", PoEMode.NONE))
+            if self.supports_poe
+            else PoEMode.NONE
+        )
 
     @property
     def bandwidth_limit_mode(self) -> BandwidthControl:
@@ -787,12 +798,19 @@ class OmadaGatewayPortStatus(OmadaApiData, OmadaPortStatus):
     @property
     def ipv6_wan_connected(self) -> bool:
         """True if the port is connected to the internet/WAN with IPv6"""
-        return dict[str, Any](self._data.get("wanPortIpv6Config", {})).get("internetState", 0) != 0
+        return (
+            dict[str, Any](self._data.get("wanPortIpv6Config", {})).get(
+                "internetState", 0
+            )
+            != 0
+        )
 
     @property
     def online_detection(self) -> bool:
         """True regular internet ping tests are working"""
-        return (self.wan_connected or self.ipv6_wan_connected) and self._data.get("onlineDetection", 0) != 0
+        return (self.wan_connected or self.ipv6_wan_connected) and self._data.get(
+            "onlineDetection", 0
+        ) != 0
 
     @property
     def ip(self) -> str | None:
@@ -807,7 +825,10 @@ class OmadaGatewayPortStatus(OmadaApiData, OmadaPortStatus):
     @property
     def wan_ipv6_enabled(self) -> bool:
         """The WAN IPv6 Address of the port (for WAN ports only)"""
-        return dict[str, Any](self._data.get("wanPortIpv6Config", {})).get("enable", 0) != 0
+        return (
+            dict[str, Any](self._data.get("wanPortIpv6Config", {})).get("enable", 0)
+            != 0
+        )
 
     @property
     def wan_ipv6_address(self) -> str | None:
@@ -920,9 +941,14 @@ class OmadaGateway(OmadaDetailedDevice):
         poe_data = {}
         if self.supports_poe:
             # Combined Gateway+PoE switch has this extra data
-            poe_data = {int(x["portId"]): bool(x["enable"]) for x in self._data["poeSettings"]}
+            poe_data = {
+                int(x["portId"]): bool(x["enable"]) for x in self._data["poeSettings"]
+            }
 
-        return [OmadaGatewayPortConfig(p, poe_data.get(p["port"])) for p in self._data["portConfigs"]]
+        return [
+            OmadaGatewayPortConfig(p, poe_data.get(p["port"]))
+            for p in self._data["portConfigs"]
+        ]
 
     @property
     def lldp_enabled(self) -> bool:

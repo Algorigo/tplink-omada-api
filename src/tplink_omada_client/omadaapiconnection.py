@@ -55,7 +55,12 @@ class OmadaApiConnection:
     async def _get_session(self) -> ClientSession:
         if self._session is None:
             self._own_session = True
-            jar = None if re.fullmatch(r"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}", self._host) is None else CookieJar(unsafe=True)
+            jar = (
+                None
+                if re.fullmatch(r"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}", self._host)
+                is None
+                else CookieJar(unsafe=True)
+            )
             self._session = ClientSession(cookie_jar=jar)
         return self._session
 
@@ -105,6 +110,11 @@ class OmadaApiConnection:
 
         return self._controller_id
 
+    async def logout(self):
+        """Logout from the controller."""
+        response = await self._do_request("post", self.format_url("logout"))
+        self._csrf_token = None
+
     async def _check_login(self) -> bool:
         if self._csrf_token is None:
             return False
@@ -118,6 +128,8 @@ class OmadaApiConnection:
             logged_in = bool(response["login"])
             if logged_in:
                 self._last_logon = time.time()
+            else:
+                self._csrf_token = None
             return logged_in
         except:  # pylint: disable=bare-except  # noqa: E722
             return False
@@ -145,7 +157,9 @@ class OmadaApiConnection:
 
         return urljoin(self._url, f"/openapi/v1/{self._controller_id}{end_point}")
 
-    async def iterate_pages(self, url: str, params: dict[str, Any] | None = None) -> AsyncIterable[dict[str, Any]]:
+    async def iterate_pages(
+        self, url: str, params: dict[str, Any] | None = None
+    ) -> AsyncIterable[dict[str, Any]]:
         """Iterates all the entries of a paged endpoint"""
         request_params = {}
         if params is not None:
@@ -169,7 +183,9 @@ class OmadaApiConnection:
             for item in data:
                 yield item
 
-    async def request(self, method: str, url: str, params=None, json=None, data: Payload | None = None) -> Any:
+    async def request(
+        self, method: str, url: str, params=None, json=None, data: Payload | None = None
+    ) -> Any:
         """Perform a request specific to the controlller, with authentication"""
 
         if not await self._check_login():
@@ -184,7 +200,9 @@ class OmadaApiConnection:
             version, _ = await self._get_controller_info()
         return AwesomeVersion(version)
 
-    async def _do_request(self, method: str, url: str, params=None, json=None, data: Payload | None = None) -> Any:
+    async def _do_request(
+        self, method: str, url: str, params=None, json=None, data: Payload | None = None
+    ) -> Any:
         """Perform a request on the controller, and unpack the response."""
 
         session = await self._get_session()

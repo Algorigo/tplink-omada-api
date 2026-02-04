@@ -1,12 +1,14 @@
 """Client for Omada Site requests."""
 
-from typing import AsyncIterable
+from typing import AsyncIterable, List
+import time
 from dataclasses import dataclass
 
 from awesomeversion import AwesomeVersion
 
 from .clients import (
     OmadaClientDetails,
+    OmadaDisconnectedClient,
     OmadaConnectedClient,
     OmadaNetworkClient,
     OmadaWiredClient,
@@ -37,10 +39,17 @@ from .devices import (
     OmadaSwitchPortDetails,
     OmadaAccesPointLanPortSettings,
 )
+from .setting.wan_lan_port import WanLanPort, WanPort
 from .exceptions import (
     InvalidDevice,
 )
 from .omadaapiconnection import OmadaApiConnection
+from .setting.network import OmadaNetwork
+from .setting.ip_mac_binding import InterfaceType, IpMacBinding
+from .setting.group import create_group_from_map, Group
+from .setting.rule import Rule, RuleType
+from .setting.ssid import Ssids
+from .setting.acl import Acl, AclType
 
 
 @dataclass
@@ -137,6 +146,12 @@ class OmadaClientSettings:
     lock_to_aps: list[str] | None = None
     fixed_address: OmadaClientFixedAddress | None = None
 
+    def lock_to_aps_disabled() -> list[str]:
+        return []
+
+    def fixed_address_disabled() -> OmadaClientFixedAddress:
+        return OmadaClientFixedAddress()
+
 
 class OmadaSiteClient:
     """Client for querying an Omada site's devices."""
@@ -151,7 +166,9 @@ class OmadaSiteClient:
             mac = mac_or_client.mac
         else:
             mac = mac_or_client
-        await self._api.request("post", self._api.format_url(f"cmd/clients/{mac}/block", self._site_id))
+        await self._api.request(
+            "post", self._api.format_url(f"cmd/clients/{mac}/block", self._site_id)
+        )
 
     async def unblock_client(self, mac_or_client: str | OmadaNetworkClient) -> None:
         """Unblock the specified client from the network."""
@@ -159,7 +176,9 @@ class OmadaSiteClient:
             mac = mac_or_client.mac
         else:
             mac = mac_or_client
-        await self._api.request("post", self._api.format_url(f"cmd/clients/{mac}/unblock", self._site_id))
+        await self._api.request(
+            "post", self._api.format_url(f"cmd/clients/{mac}/unblock", self._site_id)
+        )
 
     async def reconnect_client(self, mac_or_client: str | OmadaNetworkClient) -> None:
         """Reconnect the specified client."""
@@ -167,23 +186,33 @@ class OmadaSiteClient:
             mac = mac_or_client.mac
         else:
             mac = mac_or_client
-        await self._api.request("post", self._api.format_url(f"cmd/clients/{mac}/reconnect", self._site_id))
+        await self._api.request(
+            "post", self._api.format_url(f"cmd/clients/{mac}/reconnect", self._site_id)
+        )
 
-    async def get_client(self, mac_or_client: str | OmadaNetworkClient) -> OmadaClientDetails:
+    async def get_client(
+        self, mac_or_client: str | OmadaNetworkClient
+    ) -> OmadaClientDetails:
         """Get the details of a client"""
         if isinstance(mac_or_client, OmadaConnectedClient):
             mac = mac_or_client.mac
         else:
             mac = mac_or_client
 
-        result = await self._api.request("get", self._api.format_url(f"clients/{mac}", self._site_id))
+        result = await self._api.request(
+            "get", self._api.format_url(f"clients/{mac}", self._site_id)
+        )
 
+        if not result.get("active"):
+            return OmadaDisconnectedClient(result)
         if result.get("wireless"):
             return OmadaWirelessClientDetails(result)
         else:
             return OmadaWiredClientDetails(result)
 
-    async def update_client(self, mac_or_client: str | OmadaNetworkClient, settings: OmadaClientSettings):
+    async def update_client(
+        self, mac_or_client: str | OmadaNetworkClient, settings: OmadaClientSettings
+    ):
         """Update configuration of a client"""
         if isinstance(mac_or_client, OmadaConnectedClient):
             mac = mac_or_client.mac
@@ -210,7 +239,9 @@ class OmadaSiteClient:
         if not payload:
             return await self.get_client(mac_or_client)
 
-        result = await self._api.request("patch", self._api.format_url(f"clients/{mac}", self._site_id), json=payload)
+        result = await self._api.request(
+            "patch", self._api.format_url(f"clients/{mac}", self._site_id), json=payload
+        )
         if result.get("wireless"):
             return OmadaWirelessClientDetails(result)
         else:
@@ -229,7 +260,9 @@ class OmadaSiteClient:
 
     async def get_known_clients(self) -> AsyncIterable[OmadaNetworkClient]:
         """Get the clients connected to the site network."""
-        async for client in self._api.iterate_pages(self._api.format_url("insight/clients", self._site_id)):
+        async for client in self._api.iterate_pages(
+            self._api.format_url("insight/clients", self._site_id)
+        ):
             is_wireless = client.get("wireless")
             if is_wireless:
                 yield OmadaWirelessClient(client)
@@ -239,7 +272,9 @@ class OmadaSiteClient:
     async def get_devices(self) -> list[OmadaListDevice]:
         """Get the list of devices on the site."""
 
-        result = await self._api.request("get", self._api.format_url("devices", self._site_id))
+        result = await self._api.request(
+            "get", self._api.format_url("devices", self._site_id)
+        )
 
         return [OmadaListDevice(d) for d in result]
 
@@ -251,14 +286,24 @@ class OmadaSiteClient:
     async def get_switches(self) -> list[OmadaSwitch]:
         """Get the list of switches on the site."""
 
-        return [await self.get_switch(d) for d in await self.get_devices() if d.type == "switch"]
+        return [
+            await self.get_switch(d)
+            for d in await self.get_devices()
+            if d.type == "switch"
+        ]
 
     async def get_access_points(self) -> list[OmadaAccessPoint]:
         """Get the list of access points on the site."""
 
-        return [await self.get_access_point(d) for d in await self.get_devices() if d.type == "ap"]
+        return [
+            await self.get_access_point(d)
+            for d in await self.get_devices()
+            if d.type == "ap"
+        ]
 
-    async def get_access_point(self, mac_or_device: str | OmadaDevice) -> OmadaAccessPoint:
+    async def get_access_point(
+        self, mac_or_device: str | OmadaDevice
+    ) -> OmadaAccessPoint:
         """Get an access point by Mac address or Omada device."""
 
         if isinstance(mac_or_device, OmadaDevice):
@@ -268,11 +313,15 @@ class OmadaSiteClient:
         else:
             mac = mac_or_device
 
-        result = await self._api.request("get", self._api.format_url(f"eaps/{mac}", self._site_id))
+        result = await self._api.request(
+            "get", self._api.format_url(f"eaps/{mac}", self._site_id)
+        )
 
         return OmadaAccessPoint(result)
 
-    async def get_access_point_port(self, mac_or_device: str | OmadaDevice, port_name: str) -> OmadaAccesPointLanPortSettings:
+    async def get_access_point_port(
+        self, mac_or_device: str | OmadaDevice, port_name: str
+    ) -> OmadaAccesPointLanPortSettings:
         """Get the config of a single network port on an access point."""
         ap = await self.get_access_point(mac_or_device)
 
@@ -291,11 +340,15 @@ class OmadaSiteClient:
         else:
             mac = mac_or_device
 
-        result = await self._api.request("get", self._api.format_url(f"switches/{mac}", self._site_id))
+        result = await self._api.request(
+            "get", self._api.format_url(f"switches/{mac}", self._site_id)
+        )
 
         return OmadaSwitch(result)
 
-    async def get_switch_ports(self, mac_or_device: str | OmadaDevice) -> list[OmadaSwitchPortDetails]:
+    async def get_switch_ports(
+        self, mac_or_device: str | OmadaDevice
+    ) -> list[OmadaSwitchPortDetails]:
         """Get ports of a switch by Mac address or Omada device."""
 
         if isinstance(mac_or_device, OmadaDevice):
@@ -305,7 +358,9 @@ class OmadaSiteClient:
         else:
             mac = mac_or_device
 
-        result = await self._api.request("get", self._api.format_url(f"switches/{mac}/ports", self._site_id))
+        result = await self._api.request(
+            "get", self._api.format_url(f"switches/{mac}/ports", self._site_id)
+        )
 
         return [OmadaSwitchPortDetails(p) for p in result]
 
@@ -329,7 +384,9 @@ class OmadaSiteClient:
         else:
             port = index_or_port
 
-        result = await self._api.request("get", self._api.format_url(f"switches/{mac}/ports/{port}", self._site_id))
+        result = await self._api.request(
+            "get", self._api.format_url(f"switches/{mac}/ports/{port}", self._site_id)
+        )
 
         return OmadaSwitchPortDetails(result)
 
@@ -357,7 +414,9 @@ class OmadaSiteClient:
             if port.has_flow_control:
                 result.flow_control = port.flow_control_enabled
             if port.has_loopback_detect_vlan_based:
-                result.loopback_detect_vlan_based = port.loopback_detect_vlan_based_enabled
+                result.loopback_detect_vlan_based = (
+                    port.loopback_detect_vlan_based_enabled
+                )
 
             return result
 
@@ -396,9 +455,19 @@ class OmadaSiteClient:
             {
                 "id": port_name,
                 "lanPort": port_name,
-                "localVlanEnable": setting.vlan_enable if setting.vlan_enable is not None else ps.local_vlan_enable,
-                "localVlanId": setting.vlan_id if setting.vlan_id is not None else ps.local_vlan_id,
-                "poeOutEnable": setting.enable_poe if setting.enable_poe is not None and ps.supports_poe else ps.poe_enable,
+                "localVlanEnable": (
+                    setting.vlan_enable
+                    if setting.vlan_enable is not None
+                    else ps.local_vlan_enable
+                ),
+                "localVlanId": (
+                    setting.vlan_id if setting.vlan_id is not None else ps.local_vlan_id
+                ),
+                "poeOutEnable": (
+                    setting.enable_poe
+                    if setting.enable_poe is not None and ps.supports_poe
+                    else ps.poe_enable
+                ),
             }
             for ps in access_point.lan_port_settings
             if ps.port_name == port_name
@@ -437,41 +506,61 @@ class OmadaSiteClient:
             port = await self.get_switch_port(mac_or_device, index_or_port)
 
         override_setting = (
-            settings.profile_override_enabled if settings.profile_override_enabled is not None else port.has_profile_override
+            settings.profile_override_enabled
+            if settings.profile_override_enabled is not None
+            else port.has_profile_override
         )
         payload = {
             "name": settings.name or port.name,
             "profileId": settings.profile_id or port.profile_id,
-            "linkSpeed": settings.link_speed if settings.link_speed is not None else port.link_speed,
+            "linkSpeed": (
+                settings.link_speed
+                if settings.link_speed is not None
+                else port.link_speed
+            ),
             "duplex": settings.duplex if settings.duplex is not None else port.duplex,
             "profileOverrideEnable": override_setting,
-            "tagIds": settings.tag_ids if settings.tag_ids is not None else port.tag_ids,
+            "tagIds": (
+                settings.tag_ids if settings.tag_ids is not None else port.tag_ids
+            ),
         }
 
         if settings.native_network_id or port.native_network_id:
-            payload["nativeNetworkId"] = settings.native_network_id or port.native_network_id
+            payload["nativeNetworkId"] = (
+                settings.native_network_id or port.native_network_id
+            )
 
         network_tags_setting = (
-            settings.network_tags_setting if settings.network_tags_setting is not None else port.network_tags_setting
+            settings.network_tags_setting
+            if settings.network_tags_setting is not None
+            else port.network_tags_setting
         )
         if network_tags_setting != NetworkTagsSetting.UNKNOWN:
             payload["networkTagsSetting"] = network_tags_setting
             if network_tags_setting == NetworkTagsSetting.CUSTOM:
                 payload["tagNetworkIds"] = (
-                    settings.tagged_network_ids if settings.tagged_network_ids is not None else port.tagged_network_ids
+                    settings.tagged_network_ids
+                    if settings.tagged_network_ids is not None
+                    else port.tagged_network_ids
                 )
                 payload["untagNetworkIds"] = (
-                    settings.untagged_network_ids if settings.untagged_network_ids is not None else port.untagged_network_ids
+                    settings.untagged_network_ids
+                    if settings.untagged_network_ids is not None
+                    else port.untagged_network_ids
                 )
 
         if port.has_voice_network:
             voice_network_setting = (
-                settings.voice_network if settings.voice_network is not None else port.voice_network_enabled
+                settings.voice_network
+                if settings.voice_network is not None
+                else port.voice_network_enabled
             )
             payload["voiceNetworkEnable"] = voice_network_setting
             if voice_network_setting:
                 payload["voiceNetworkId"] = (
-                    settings.voice_network_id if settings.voice_network_id is not None else port.voice_network_id
+                    settings.voice_network_id
+                    if settings.voice_network_id is not None
+                    else port.voice_network_id
                 )
 
         if override_setting:
@@ -482,10 +571,16 @@ class OmadaSiteClient:
             payload["operation"] = "switching"
             payload["bandWidthCtrlType"] = BandwidthControl.OFF
 
-            enable_poe = new_overrides.enable_poe if new_overrides.enable_poe is not None else existing_overrides.enable_poe
+            enable_poe = (
+                new_overrides.enable_poe
+                if new_overrides.enable_poe is not None
+                else existing_overrides.enable_poe
+            )
             payload["poe"] = PoEMode.ENABLED if enable_poe else PoEMode.DISABLED
             payload["dot1x"] = (
-                new_overrides.dot1x_mode if new_overrides.dot1x_mode is not None else existing_overrides.dot1x_mode
+                new_overrides.dot1x_mode
+                if new_overrides.dot1x_mode is not None
+                else existing_overrides.dot1x_mode
             )
             payload["lldpMedEnable"] = (
                 new_overrides.lldp_med_enable
@@ -503,17 +598,27 @@ class OmadaSiteClient:
                 else existing_overrides.spanning_tree_enable
             )
             payload["portIsolationEnable"] = (
-                new_overrides.port_isolation if new_overrides.port_isolation is not None else existing_overrides.port_isolation
+                new_overrides.port_isolation
+                if new_overrides.port_isolation is not None
+                else existing_overrides.port_isolation
             )
             if (await self._api.get_controller_version()) < AwesomeVersion("6"):
                 # Possibly no longer valid
                 payload["topoNotifyEnable"] = False
             else:
                 # Settings that might be non-optional in 6.0+ versions
-                eee = new_overrides.eee if new_overrides.eee is not None else existing_overrides.eee
+                eee = (
+                    new_overrides.eee
+                    if new_overrides.eee is not None
+                    else existing_overrides.eee
+                )
                 if eee is not None:
                     payload["eeeEnable"] = eee
-                fce = new_overrides.flow_control if new_overrides.flow_control is not None else existing_overrides.flow_control
+                fce = (
+                    new_overrides.flow_control
+                    if new_overrides.flow_control is not None
+                    else existing_overrides.flow_control
+                )
                 if fce is not None:
                     payload["flowControlEnable"] = fce
                 ldvbe = (
@@ -527,10 +632,14 @@ class OmadaSiteClient:
                 payload["dhcpL2RelaySettings"] = {"enable": False}
 
         if (await self._api.get_controller_version()) < AwesomeVersion("6"):
-            request_url = self._api.format_url(f"switches/{mac}/ports/{port.port}", self._site_id)
+            request_url = self._api.format_url(
+                f"switches/{mac}/ports/{port.port}", self._site_id
+            )
         else:
             # New OpenAPI endpoint from 6.0+
-            request_url = self._api.format_openapi_url(f"switches/{mac}/ports/{port.port}", self._site_id)
+            request_url = self._api.format_openapi_url(
+                f"switches/{mac}/ports/{port.port}", self._site_id
+            )
 
         await self._api.request(
             "patch",
@@ -554,11 +663,15 @@ class OmadaSiteClient:
     async def get_port_profiles(self) -> list[OmadaPortProfile]:
         """Lists the available switch port profiles that can be applied."""
 
-        result = await self._api.request("get", self._api.format_url("setting/lan/profileSummary", self._site_id))
+        result = await self._api.request(
+            "get", self._api.format_url("setting/lan/profileSummary", self._site_id)
+        )
 
         return [OmadaPortProfile(p) for p in result["data"]]
 
-    async def get_firmware_details(self, mac_or_device: str | OmadaDevice) -> OmadaFirmwareUpdate:
+    async def get_firmware_details(
+        self, mac_or_device: str | OmadaDevice
+    ) -> OmadaFirmwareUpdate:
         """Get details of the device firware and available upgrades."""
 
         if isinstance(mac_or_device, OmadaDevice):
@@ -566,7 +679,9 @@ class OmadaSiteClient:
         else:
             mac = mac_or_device
 
-        result = await self._api.request("get", self._api.format_url(f"devices/{mac}/firmware", self._site_id))
+        result = await self._api.request(
+            "get", self._api.format_url(f"devices/{mac}/firmware", self._site_id)
+        )
 
         return OmadaFirmwareUpdate(result)
 
@@ -590,11 +705,17 @@ class OmadaSiteClient:
     async def get_gateways(self) -> list[OmadaGateway]:
         """Get the list of gateways (routers) on the site. (Zero or one!)"""
 
-        return [await self.get_gateway(d) for d in await self.get_devices() if d.type == "gateway"]
+        return [
+            await self.get_gateway(d)
+            for d in await self.get_devices()
+            if d.type == "gateway"
+        ]
 
     async def _get_gateway_mac(self, mac_or_device: str | OmadaDevice | None) -> str:
         if mac_or_device is None:
-            mac_or_device = next((d for d in await self.get_devices() if d.type == "gateway"), None)
+            mac_or_device = next(
+                (d for d in await self.get_devices() if d.type == "gateway"), None
+            )
             if mac_or_device is None:
                 raise InvalidDevice("No gateways found in site")
 
@@ -604,15 +725,21 @@ class OmadaSiteClient:
             return mac_or_device.mac
         return mac_or_device
 
-    async def get_gateway(self, mac_or_device: str | OmadaDevice | None = None) -> OmadaGateway:
+    async def get_gateway(
+        self, mac_or_device: str | OmadaDevice | None = None
+    ) -> OmadaGateway:
         """Get the gatway (router) for the site by Mac address or Omada device. (There can be only one!)"""
 
         mac = await self._get_gateway_mac(mac_or_device)
-        result = await self._api.request("get", self._api.format_url(f"gateways/{mac}", self._site_id))
+        result = await self._api.request(
+            "get", self._api.format_url(f"gateways/{mac}", self._site_id)
+        )
 
         return OmadaGateway(result)
 
-    async def get_gateway_port(self, port_id: int, mac_or_deviec: str | OmadaDevice | None = None) -> OmadaGatewayPortConfig:
+    async def get_gateway_port(
+        self, port_id: int, mac_or_deviec: str | OmadaDevice | None = None
+    ) -> OmadaGatewayPortConfig:
         """Get the port config for a specified port on the gateway"""
         gw = await self.get_gateway(mac_or_deviec)
         port_config = next(p for p in gw.port_configs if p.port_number == port_id)
@@ -681,9 +808,12 @@ class OmadaSiteClient:
                 "poeSettings": [
                     # Output an entry for every port that supports PoE, setting the appropriate port as requested
                     {
-                        "enable": settings.enable_poe
-                        if settings.enable_poe is not None and port_id == p.port_number
-                        else p.poe_mode == PoEMode.ENABLED,
+                        "enable": (
+                            settings.enable_poe
+                            if settings.enable_poe is not None
+                            and port_id == p.port_number
+                            else p.poe_mode == PoEMode.ENABLED
+                        ),
                         "portId": p.port_number,
                     }
                     for p in gw.port_configs
@@ -701,7 +831,9 @@ class OmadaSiteClient:
         # so we just request a new update
         return await self.get_gateway_port(port_id, mac)
 
-    async def set_led_setting(self, mac_or_device: str | OmadaDevice, setting: LedSetting) -> bool:
+    async def set_led_setting(
+        self, mac_or_device: str | OmadaDevice, setting: LedSetting
+    ) -> bool:
         """Sets the onboard LED setting for the device"""
         if isinstance(mac_or_device, OmadaDevice):
             device = mac_or_device
@@ -716,3 +848,223 @@ class OmadaSiteClient:
         )
 
         return True
+
+    async def get_networks(self) -> AsyncIterable[OmadaNetwork]:
+        """Get the clients connected to the site network."""
+        async for network in self._api.iterate_pages(
+            self._api.format_url("setting/lan/networks", self._site_id),
+        ):
+            yield OmadaNetwork(network)
+
+    async def get_wan_lan_ports(self) -> list[WanLanPort]:
+        """Get the WAN/LAN ports of the gateway."""
+        result = await self._api.request(
+            "get",
+            self._api.format_url("setting/wanlanstatus", self._site_id),
+            params={"_": str(int(time.time() * 1000))},
+        )
+
+        return [WanLanPort(k, v) for k, v in result.get("portName").items()] + [
+            WanPort(d) for d in result.get("wanList")
+        ]
+
+    async def create_ip_mac_binding(
+        self,
+        ip: str,
+        mac: str,
+        interface_id: str,
+        interface_type: InterfaceType = InterfaceType.WAN,
+        description: str = "",
+        export_to_dhcp_reservation: bool = True,
+        status: bool = True,
+    ) -> None:
+        """Create a port forwarding rule on the gateway."""
+        result = await self._api.request(
+            "post",
+            self._api.format_url("setting/firewall/imbs", self._site_id),
+            json={
+                "ip": ip,
+                "mac": mac,
+                "interfaceId": interface_id,
+                "interfaceType": interface_type,
+                "description": description,
+                "exportToDhcpReservation": export_to_dhcp_reservation,
+                "status": status,
+            },
+        )
+
+    async def get_ip_mac_bindings(self) -> AsyncIterable[IpMacBinding]:
+        """Get the IP/MAC bindings of the gateway."""
+        async for ip_binding in self._api.iterate_pages(
+            self._api.format_url("setting/firewall/imbs", self._site_id),
+        ):
+            yield IpMacBinding(ip_binding)
+
+    async def delete_ip_mac_binding(
+        self,
+        binding_id: str,
+    ):
+        """Delete an IP/MAC binding."""
+        await self._api.request(
+            "delete",
+            self._api.format_url(f"setting/firewall/imbs/{binding_id}", self._site_id),
+        )
+
+    async def get_groups(
+        self,
+    ) -> List[Group]:
+        result = await self._api.request(
+            "get",
+            self._api.format_url(
+                f"sites/{self._site_id}/setting/profiles/groups?_t={int(time.time()*1000)}"
+            ),
+        )
+        return [create_group_from_map(group) for group in result.get("data")]
+
+    async def create_new_group(
+        self,
+        group: Group,
+    ) -> Group:
+        if group.group_id is not None:
+            raise ValueError("Group already has an ID")
+
+        map = group.to_map()
+        map.pop("siteId", None)
+        map.pop("builtIn", None)
+
+        result = await self._api.request(
+            "post",
+            self._api.format_url(
+                f"sites/{self._site_id}/setting/profiles/groups",
+            ),
+            json=map,
+        )
+        group.site_id = self._site_id
+        group.group_id = result
+
+        return group
+
+    async def delete_group(
+        self,
+        group: Group,
+    ) -> None:
+        await self._api.request(
+            "delete",
+            self._api.format_url(
+                f"sites/{self._site_id}/setting/profiles/groups/{group.type.value}/{group.group_id}",
+            ),
+        )
+
+    async def get_ssids_list(
+        self,
+        page: int = 1,
+        page_size: int = 100,
+    ) -> List[Ssids]:
+        result = await self._api.request(
+            "get",
+            self._api.format_url(
+                f"sites/{self._site_id}/setting/ssids?type=1&currentPage={page}&currentPageSize={page_size}&cu_t={int(time.time()*1000)}"
+            ),
+        )
+        print("SSIDs result:", result)
+        return [Ssids(ssids) for ssids in result["ssids"]]
+
+    async def get_rules(
+        self,
+        type: RuleType,
+        page: int = 1,
+        page_size: int = 100,
+    ) -> List[Rule]:
+        result = await self._api.request(
+            "get",
+            self._api.format_url(
+                f"sites/{self._site_id}/setting/firewall/urlfilterings?currentPage={page}&currentPageSize={page_size}&type={type.value}&_t={int(time.time()*1000)}"
+            ),
+        )
+
+        return [Rule(rule) for rule in result.get("data")]
+
+    async def create_new_rule(
+        self,
+        rule: Rule,
+    ) -> Rule:
+        if rule.id is not None:
+            raise ValueError("Rule already has an ID")
+
+        map = rule.to_map()
+        map.pop("index", None)
+        map.pop("siteId", None)
+        map.pop("entryId", None)
+        map.pop("resource", None)
+
+        result = await self._api.request(
+            "post",
+            self._api.format_url(
+                f"sites/{self._site_id}/setting/firewall/urlfilterings",
+            ),
+            json=map,
+        )
+        rule.site_id = self._site_id
+        rule.id = result
+
+        return rule
+
+    async def delete_rule(
+        self,
+        rule: Rule,
+    ) -> None:
+        await self._api.request(
+            "delete",
+            self._api.format_url(
+                f"sites/{self._site_id}/setting/firewall/urlfilterings/{rule.id}",
+            ),
+        )
+
+    async def get_acls(
+        self,
+        type: AclType,
+        page: int = 1,
+        page_size: int = 100,
+    ) -> List[Acl]:
+        result = await self._api.request(
+            "get",
+            self._api.format_url(
+                f"sites/{self._site_id}/setting/firewall/acls?currentPage={page}&currentPageSize={page_size}&type={type.value}&_t={int(time.time()*1000)}"
+            ),
+        )
+
+        return [Acl(acl) for acl in result.get("data")]
+
+    async def create_new_acl(
+        self,
+        acl: Acl,
+    ) -> Acl:
+        if acl.id is not None:
+            raise ValueError("ACL already has an ID")
+
+        map = acl.to_map()
+        map.pop("index", None)
+        map.pop("siteId", None)
+
+        result = await self._api.request(
+            "post",
+            self._api.format_url(
+                f"sites/{self._site_id}/setting/firewall/acls",
+            ),
+            json=map,
+        )
+        acl.site_id = self._site_id
+        acl.id = result
+
+        return acl
+
+    async def delete_acl(
+        self,
+        acl: Acl,
+    ) -> None:
+        await self._api.request(
+            "delete",
+            self._api.format_url(
+                f"sites/{self._site_id}/setting/firewall/acls/{acl.id}",
+            ),
+        )

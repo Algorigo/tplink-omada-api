@@ -1,6 +1,6 @@
 """Client for Omada Site requests."""
 
-from typing import AsyncIterable, List
+from typing import AsyncIterable, List, Dict
 import time
 from dataclasses import dataclass
 
@@ -1020,6 +1020,23 @@ class OmadaSiteClient:
             ),
         )
 
+    async def modify_index_rules(
+        self,
+        type: RuleType,
+        rule_ids: Dict[str, int],
+    ) -> None:
+        payload = {
+            "type": type.value,
+            "indexes": rule_ids,
+        }
+        await self._api.request(
+            "post",
+            self._api.format_url(
+                f"sites/{self._site_id}/cmd/urlfilterings/modifyIndex",
+            ),
+            json=payload,
+        )
+
     async def get_acls(
         self,
         type: AclType,
@@ -1046,17 +1063,20 @@ class OmadaSiteClient:
         map.pop("index", None)
         map.pop("siteId", None)
 
-        result = await self._api.request(
+        await self._api.request(
             "post",
             self._api.format_url(
                 f"sites/{self._site_id}/setting/firewall/acls",
             ),
             json=map,
         )
-        acl.site_id = self._site_id
-        acl.id = result
 
-        return acl
+        acls = await self.get_acls(acl.type)
+        new_acl = next(a for a in acls if a.name == acl.name)
+        if not new_acl:
+            raise RuntimeError("Failed to find newly created ACL")
+
+        return new_acl
 
     async def delete_acl(
         self,
@@ -1067,4 +1087,21 @@ class OmadaSiteClient:
             self._api.format_url(
                 f"sites/{self._site_id}/setting/firewall/acls/{acl.id}",
             ),
+        )
+
+    async def modify_index_acls(
+        self,
+        type: AclType,
+        acl_ids: Dict[str, int],
+    ) -> None:
+        payload = {
+            "type": type.value,
+            "indexes": acl_ids,
+        }
+        await self._api.request(
+            "post",
+            self._api.format_url(
+                f"sites/{self._site_id}/cmd/acls/modifyIndex",
+            ),
+            json=payload,
         )

@@ -1046,17 +1046,20 @@ class OmadaSiteClient:
         map.pop("index", None)
         map.pop("siteId", None)
 
-        result = await self._api.request(
+        await self._api.request(
             "post",
             self._api.format_url(
                 f"sites/{self._site_id}/setting/firewall/acls",
             ),
             json=map,
         )
-        acl.site_id = self._site_id
-        acl.id = result
 
-        return acl
+        acls = await self.get_acls(acl.type)
+        new_acl = next(a for a in acls if a.name == acl.name)
+        if not new_acl:
+            raise RuntimeError("Failed to find newly created ACL")
+
+        return new_acl
 
     async def delete_acl(
         self,

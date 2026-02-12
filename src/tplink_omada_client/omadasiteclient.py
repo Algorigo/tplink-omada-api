@@ -1115,6 +1115,7 @@ class OmadaSiteClient:
         duration_seconds: int = 60,  # 1 - 300
         single_packet_size: int = 1000,  # 68 - 1000
         filter_rule: Filter | None = None,
+        path: str | None = None,
     ) -> str:
         uuid = str(uuid4())
         payload = {
@@ -1151,6 +1152,7 @@ class OmadaSiteClient:
                 f"files/sites/{self._site_id}/capture/device-type/{packet_capture_source.get_device_type_str()}/download"
             ),
             json={"requestId": uuid},
+            path=path,
         )
 
         return downloaded

@@ -969,7 +969,6 @@ class OmadaSiteClient:
                 f"sites/{self._site_id}/setting/ssids?type=1&currentPage={page}&currentPageSize={page_size}&cu_t={int(time.time()*1000)}"
             ),
         )
-        print("SSIDs result:", result)
         return [Ssids(ssids) for ssids in result["ssids"]]
 
     async def get_rules(

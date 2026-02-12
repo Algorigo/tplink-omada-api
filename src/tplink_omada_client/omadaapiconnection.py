@@ -8,6 +8,8 @@ from urllib.parse import urlsplit, urljoin
 from aiohttp import Payload, client_exceptions, CookieJar
 from aiohttp.client import ClientSession
 from awesomeversion import AwesomeVersion
+import aiofiles
+import pathlib
 
 from .exceptions import (
     BadControllerUrl,
@@ -262,3 +264,101 @@ class OmadaApiConnection:
         if response["errorCode"] == -30109:
             raise LoginFailed(response["errorCode"], response["msg"])
         raise RequestFailed(response["errorCode"], response["msg"])
+
+    async def request_download(
+        self,
+        method: str,
+        url: str,
+        params=None,
+        json=None,
+        data: Payload | None = None,
+        path: str | None = None,
+    ) -> str:
+        """Perform a request specific to the controlller, with authentication"""
+
+        if not await self._check_login():
+            await self.login()
+
+        return await self._do_request_download(
+            method,
+            url,
+            params=params,
+            json=json,
+            data=data,
+            path=path,
+        )
+
+    async def _do_request_download(
+        self,
+        method: str,
+        url: str,
+        params=None,
+        json=None,
+        data: Payload | None = None,
+        path: str | None = None,
+    ) -> str:
+        """Perform a request on the controller, and unpack the response."""
+        session = await self._get_session()
+
+        # Note: Auth happens via cookies, set during the login command, but we also get a CSRF token
+        # which we need to push back
+        headers = {}
+        if self._csrf_token:
+            headers["Csrf-Token"] = self._csrf_token
+            headers["Omada-Request-Source"] = "web-local"
+            headers["Referer"] = self._url + "/"
+            headers["Origin"] = self._url
+
+        try:
+            async with session.request(
+                method,
+                url,
+                params=params,
+                headers=headers,
+                json=json,
+                data=data,
+                ssl=self._verify_ssl,
+            ) as response:
+                if response.status != 200:
+                    if response.content_type == "application/json":
+                        content = await response.json(encoding="utf-8")
+                        self._check_application_errors(content)
+
+                    raise RequestFailed(response.status, "HTTP Request Error")
+
+                content_disposition = response.headers.get("Content-Disposition", "")
+                match = re.search(r'filename="?(.+)"?', content_disposition)
+                if match:
+                    suggested_filename = match.group(1)
+                    suggested_extension = pathlib.Path(suggested_filename).suffix
+                else:
+                    suggested_filename = "downloaded_file"
+                    suggested_extension = None
+
+                if path:
+                    target_path = pathlib.Path(path)
+                    if target_path.suffix == suggested_extension:
+                        filepath = path
+                    else:
+                        filepath = f"{path}{suggested_filename}"
+                else:
+                    filepath = suggested_filename
+
+                parent_dir = pathlib.Path(filepath).parent
+                if not parent_dir.exists():
+                    parent_dir.mkdir(parents=True, exist_ok=True)
+
+                async with aiofiles.open(filepath, mode="wb") as f:
+                    while True:
+                        chunk = await response.content.read(1024)  # 1KB씩 읽기
+                        if not chunk:
+                            break
+                        await f.write(chunk)
+                return filepath
+
+        except client_exceptions.InvalidURL as err:
+            raise BadControllerUrl(err) from err
+        except client_exceptions.ClientConnectionError as err:
+            raise ConnectionFailed(err) from err
+        except client_exceptions.ClientError as err:
+            raise RequestFailed(0, f"Unexpected error: {err}") from None

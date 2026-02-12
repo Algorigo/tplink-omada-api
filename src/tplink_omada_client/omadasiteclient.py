@@ -2,6 +2,8 @@
 
 from typing import AsyncIterable, List, Dict
 import time
+from uuid import uuid4
+import asyncio
 from dataclasses import dataclass
 
 from awesomeversion import AwesomeVersion
@@ -50,6 +52,7 @@ from .setting.group import create_group_from_map, Group
 from .setting.rule import Rule, RuleType
 from .setting.ssid import Ssids
 from .setting.acl import Acl, AclType
+from .setting.packet_capture import PacketCaptureSource, PacketCaptureInterface, Filter
 
 
 @dataclass
@@ -966,7 +969,6 @@ class OmadaSiteClient:
                 f"sites/{self._site_id}/setting/ssids?type=1&currentPage={page}&currentPageSize={page_size}&cu_t={int(time.time()*1000)}"
             ),
         )
-        print("SSIDs result:", result)
         return [Ssids(ssids) for ssids in result["ssids"]]
 
     async def get_rules(
@@ -1105,3 +1107,50 @@ class OmadaSiteClient:
             ),
             json=payload,
         )
+
+    async def packet_capture(
+        self,
+        packet_capture_source: PacketCaptureSource,
+        packet_capture_interface: PacketCaptureInterface,
+        duration_seconds: int = 60,  # 1 - 300
+        single_packet_size: int = 1000,  # 68 - 1000
+        filter_rule: Filter | None = None,
+    ) -> str:
+        uuid = str(uuid4())
+        payload = {
+            "requestId": uuid,
+            "filterRules": filter_rule.get_filter_str() if filter_rule else "",
+            "duration": str(duration_seconds),
+            "singlePacketSize": single_packet_size,
+        }
+        payload = packet_capture_interface.update_payload(payload)
+
+        result = await self._api.request(
+            "post",
+            self._api.format_url(
+                f"sites/{self._site_id}/capture/device-type/{packet_capture_source.get_device_type_str()}/start",
+            ),
+            json=payload,
+        )
+
+        while True:
+            await asyncio.sleep(2)
+            result = await self._api.request(
+                "get",
+                self._api.format_url(
+                    f"sites/{self._site_id}/capture/device-type/{packet_capture_source.get_device_type_str()}/status?requestId={uuid}&_t={int(time.time()*1000)}",
+                ),
+            )
+            status = result.get("status")
+            if status == 2:
+                break
+
+        downloaded = await self._api.request_download(
+            "post",
+            self._api.format_url(
+                f"files/sites/{self._site_id}/capture/device-type/{packet_capture_source.get_device_type_str()}/download"
+            ),
+            json={"requestId": uuid},
+        )
+
+        return downloaded

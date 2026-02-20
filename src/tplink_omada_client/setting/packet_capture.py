@@ -75,7 +75,7 @@ class GroupFilter(Filter, ABC):
         self.filters = filters
 
     @abstractmethod
-    def get_splitter() -> str:
+    def get_splitter(self) -> str:
         pass
 
     def get_filter_str(self) -> str:
@@ -93,13 +93,13 @@ class GroupFilter(Filter, ABC):
 
 class AndFilter(GroupFilter):
 
-    def get_splitter() -> str:
+    def get_splitter(self) -> str:
         return " and "
 
 
 class OrFilter(GroupFilter):
 
-    def get_splitter() -> str:
+    def get_splitter(self) -> str:
         return " or "
 
 

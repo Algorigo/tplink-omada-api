@@ -340,7 +340,7 @@ class OmadaApiConnection:
                     if target_path.suffix == suggested_extension:
                         filepath = path
                     else:
-                        filepath = f"{path}{suggested_filename}"
+                        filepath = target_path / suggested_filename
                 else:
                     filepath = suggested_filename
 
